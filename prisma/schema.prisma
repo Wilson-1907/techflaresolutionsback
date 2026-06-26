@@ -1,0 +1,643 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  INNOVATOR
+  EMPLOYEE
+  ADMIN
+  HOD
+  CIO
+}
+
+enum IdeaStatus {
+  SUBMITTED
+  RESEARCH_REVIEW
+  RISK_ASSESSMENT
+  FEASIBILITY_ANALYSIS
+  APPROVED
+  REJECTED
+  IN_DEVELOPMENT
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  ON_HOLD
+}
+
+enum SolutionStatus {
+  SUBMITTED
+  ANALYZING
+  PROPOSAL_SENT
+  ACCEPTED
+  DECLINED
+}
+
+enum WorkflowStatus {
+  PENDING_ADMIN
+  ADMIN_APPROVED
+  SENT_TO_CIO
+  CIO_CONFIRMED
+  ASSIGNED_TO_DEPT
+  HOD_BUDGET_SUBMITTED
+  FINANCE_REVIEW
+  SENT_TO_CLIENT
+  CLIENT_AGREED
+  DEPOSIT_PAID
+  WORK_STARTED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum BlogStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String?
+  googleId           String?   @unique
+  authProvider       String    @default("email")
+  firstName          String
+  lastName           String
+  role               UserRole  @default(CLIENT)
+  company            String?
+  phone              String?
+  phoneHash          String?   @unique
+  points             Float     @default(0)
+  communityMember    Boolean   @default(false)
+  communityEmail     String?
+  communityJoinedAt  DateTime?
+  mfaEnabled         Boolean   @default(false)
+  mfaSecret          String?
+  emailVerified      Boolean   @default(false)
+  marketingOptIn     Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  ideas              Idea[]
+  solutions          SolutionRequest[]
+  projects           Project[]       @relation("ClientProjects")
+  supportTickets     SupportTicket[]
+  notifications      Notification[]
+  messages           Message[]
+  pointsTransactions PointsTransaction[]
+  careerApplications CareerApplication[]
+  productOrders      ProductOrder[]
+  blogPosts          BlogPost[]
+  testimonials       Testimonial[]
+  serviceRatings     ServiceRating[]
+  authVerifications  AuthVerification[]
+  employeeProfile    EmployeeProfile?
+  departmentLed      Department?         @relation("DepartmentHod")
+  workflowsManaged   ServiceWorkflow[]   @relation("WorkflowClient")
+  internalNotes      InternalNotification[] @relation("NotificationRecipient")
+  sentNotifications  InternalNotification[] @relation("NotificationSender")
+  staffMessagesSent     StaffMessage[] @relation("StaffMessageSender")
+  staffMessagesReceived StaffMessage[] @relation("StaffMessageRecipient")
+  aiSessions         AiSession[]
+}
+
+model AuthVerification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  code      String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
+}
+
+model Idea {
+  id          String     @id @default(cuid())
+  title       String
+  description String     @db.Text
+  category    String
+  type        String     // idea | invention | business_concept
+  status      IdeaStatus @default(SUBMITTED)
+  attachments String?    @db.Text
+  reviewNotes String?    @db.Text
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  catalogProducts Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model SolutionRequest {
+  id          String         @id @default(cuid())
+  problem     String         @db.Text
+  budget      String
+  industry    String
+  timeline    String
+  status      SolutionStatus @default(SUBMITTED)
+  proposal    String?        @db.Text
+  estimatedCost String?
+  userId      String?
+  user        User?          @relation(fields: [userId], references: [id])
+  guestEmail  String?
+  guestName   String?
+  marketingOptIn Boolean @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?       @db.Text
+  status      ProjectStatus @default(PLANNING)
+  progress    Int           @default(0)
+  clientId    String
+  client      User          @relation("ClientProjects", fields: [clientId], references: [id])
+  milestones  Milestone[]
+  invoices    Invoice[]
+  documents   Document[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  number    String   @unique
+  amount    Float
+  currency  String   @default("USD")
+  status    String   @default("pending") // pending | paid | overdue
+  dueDate   DateTime
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  type      String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  subject   String
+  message   String   @db.Text
+  status    String   @default("open")
+  priority  String   @default("medium")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ResearchPublication {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  type        String   // white_paper | case_study | industry_report | innovation_report
+  excerpt     String   @db.Text
+  content     String   @db.Text
+  author      String
+  publishedAt DateTime @default(now())
+  featured    Boolean  @default(false)
+}
+
+model NewsArticle {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  category    String   // announcement | award | press_release | achievement
+  excerpt     String   @db.Text
+  content     String   @db.Text
+  authorName  String?
+  published   Boolean  @default(false)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JobPosting {
+  id           String   @id @default(cuid())
+  title        String
+  department   String
+  location     String
+  type         String   // full_time | internship | graduate
+  description  String   @db.Text
+  requirements String   @db.Text
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  tagline       String
+  description   String   @db.Text
+  status        String   // live | in-development | coming-soon
+  imageUrl      String?
+  externalUrl   String?
+  features      Json     @default("[]")
+  howItWorks    Json?
+  pricing       Json?
+  sortOrder     Int      @default(0)
+  published     Boolean  @default(true)
+  source        String   @default("techflare") // techflare | innovator
+  innovatorName String?
+  ideaId        String?
+  idea          Idea?    @relation(fields: [ideaId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ContactSubmission {
+  id                    String   @id @default(cuid())
+  name                  String
+  email                 String
+  phone                 String?
+  subject               String
+  message               String   @db.Text
+  marketingOptIn        Boolean  @default(false)
+  createdAt             DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  projectId String?
+  createdAt DateTime @default(now())
+}
+
+model PointsTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  type        String   // earn | redeem | bonus
+  description String
+  profitValue Float?
+  createdAt   DateTime @default(now())
+}
+
+model ProductOrder {
+  id           String   @id @default(cuid())
+  productSlug  String
+  productTitle String
+  plan         String
+  customerName String
+  customerEmail String
+  customerPhone String?
+  organization String?
+  message      String   @db.Text
+  amountKes    Float?
+  status       String   @default("pending")
+  paymentStatus String  @default("unpaid")
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  marketingOptIn Boolean @default(false)
+  mpesaPayments MpesaPayment[]
+  createdAt    DateTime @default(now())
+}
+
+model MpesaPayment {
+  id                 String   @id @default(cuid())
+  phone              String
+  amount             Float
+  accountReference   String
+  description        String
+  referenceType      String
+  referenceId        String?
+  checkoutRequestId  String?  @unique
+  merchantRequestId  String?
+  mpesaReceiptNumber String?
+  status             String   @default("pending")
+  resultCode         Int?
+  resultDesc         String?
+  orderId            String?
+  order              ProductOrder? @relation(fields: [orderId], references: [id])
+  financeDocumentId  String?
+  userId             String?
+  aiSession          AiSession?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([referenceType, referenceId])
+  @@index([status])
+}
+
+/// Paid AI self-service session (KES 100 / 12 hours) — innovation fine-tune & solutions proposal
+model AiSession {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose        String        @default("ai_self_service")
+  expiresAt      DateTime
+  paymentId      String?       @unique
+  payment        MpesaPayment? @relation(fields: [paymentId], references: [id])
+  financeDocId   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
+model CareerApplication {
+  id              String   @id @default(cuid())
+  jobTitle        String
+  applicantName   String
+  applicantEmail  String
+  applicantPhone  String?
+  coverLetter     String   @db.Text
+  communityMember Boolean  @default(false)
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id])
+  status          String   @default("submitted")
+  marketingOptIn  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model SiteAnnouncement {
+  id        String    @id @default(cuid())
+  title     String
+  message   String    @db.Text
+  type      String    @default("info") // info | news | alert | success
+  link      String?
+  linkLabel String?
+  active    Boolean   @default(true)
+  startsAt  DateTime  @default(now())
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model FinanceDocument {
+  id            String    @id @default(cuid())
+  docType       String    // invoice | receipt
+  number        String    @unique
+  status        String    @default("draft") // draft | sent | paid | cancelled
+  currency      String    @default("KES")
+  subtotal      Float
+  taxRate       Float     @default(0)
+  taxAmount     Float     @default(0)
+  total         Float
+  lineItems     Json
+  splits        Json?
+  clientName    String
+  clientEmail   String?
+  clientPhone   String?
+  clientRole    String?
+  clientAddress String?   @db.Text
+  issuerName    String    @default("Kinyanjui Wilson")
+  issuerTitle   String    @default("Treasury Department · TechFlare Solutions")
+  invoiceRef    String?
+  paymentMethod String?
+  notes         String?   @db.Text
+  showOnMainSite Boolean  @default(false)
+  paidAt        DateTime?
+  dueDate       DateTime?
+  docDate       DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model BlogPost {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String     @db.Text
+  content     String     @db.Text
+  coverImage  String?
+  tags        String?
+  status      BlogStatus @default(PENDING)
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id])
+  authorRole  UserRole
+  reviewNotes String?    @db.Text
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  authorName  String
+  authorTitle String?
+  authorRole  String?
+  company     String?
+  content     String   @db.Text
+  rating      Int      @default(5)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  approved    Boolean  @default(false)
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceRating {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  targetType  String
+  targetRef   String
+  targetTitle String
+  rating      Int
+  comment     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, targetType, targetRef])
+}
+
+model PanelCredential {
+  id           String   @id @default(cuid())
+  panel        String   @unique // admin | finance
+  passwordHash String
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+}
+
+model PanelLoginChallenge {
+  id        String    @id @default(cuid())
+  panel     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([panel, usedAt])
+}
+
+model Department {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  slug        String            @unique
+  code        String            @default("GN")
+  description String?
+  hodId       String?           @unique
+  hod         User?             @relation("DepartmentHod", fields: [hodId], references: [id])
+  employees     EmployeeProfile[]
+  workflows     ServiceWorkflow[]
+  staffMessages StaffMessage[]
+  createdAt     DateTime          @default(now())
+}
+
+model EmployeeProfile {
+  id           String      @id @default(cuid())
+  userId       String      @unique
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workId       String      @unique
+  position     String
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  office       String?
+  isHod        Boolean     @default(false)
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model ServiceWorkflow {
+  id              String         @id @default(cuid())
+  projectNumber   String?        @unique
+  type            String
+  sourceId        String
+  title           String
+  summary         String         @db.Text
+  clientId        String?
+  client          User?          @relation("WorkflowClient", fields: [clientId], references: [id])
+  departmentId    String?
+  department      Department?    @relation(fields: [departmentId], references: [id])
+  status          WorkflowStatus @default(PENDING_ADMIN)
+  adminNotes      String?        @db.Text
+  sendToCio       Boolean        @default(false)
+  hodBrief        String?        @db.Text
+  hodBudget       Float?
+  hodStages       Json?
+  financeNotes    String?        @db.Text
+  financeTotal    Float?
+  financeStages   Json?
+  financeDocId    String?
+  receiptDocId    String?
+  clientAgreed    Boolean        @default(false)
+  clientAgreedAt  DateTime?
+  clientDeclined  Boolean        @default(false)
+  clientDeclineReason String?    @db.Text
+  depositPercent  Float          @default(60)
+  depositPaid     Boolean        @default(false)
+  depositPaidAt   DateTime?
+  workStarted     Boolean        @default(false)
+  workStartedAt   DateTime?
+  progress        Int            @default(0)
+  emailDeliveryStatus String?
+  emailLastError      String?        @db.Text
+  emailLastAttemptAt  DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status])
+  @@index([clientId])
+  @@index([emailDeliveryStatus])
+  @@index([type, sourceId])
+}
+
+model InternalNotification {
+  id           String   @id @default(cuid())
+  title        String
+  message      String   @db.Text
+  recipientId  String?
+  recipient    User?    @relation("NotificationRecipient", fields: [recipientId], references: [id])
+  departmentId String?
+  senderId     String?
+  sender       User?    @relation("NotificationSender", fields: [senderId], references: [id])
+  read         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([recipientId])
+  @@index([departmentId])
+}
+
+model FinanceLedgerEntry {
+  id            String   @id @default(cuid())
+  entryType     String   // revenue | income | expense | salary | investment
+  direction     String   // in | out
+  category      String   // invoice | receipt | mpesa | product_order | payroll | vendor | capex | operations | other
+  amount        Float
+  currency      String   @default("KES")
+  description   String
+  referenceType String?
+  referenceId   String?
+  entryDate     DateTime @default(now())
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@unique([referenceType, referenceId])
+  @@index([entryType])
+  @@index([direction])
+  @@index([entryDate])
+}
+
+model StaffMessage {
+  id           String      @id @default(cuid())
+  senderId     String
+  sender       User        @relation("StaffMessageSender", fields: [senderId], references: [id])
+  recipientId  String?
+  recipient    User?       @relation("StaffMessageRecipient", fields: [recipientId], references: [id])
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  office       String?
+  audience     String      @default("direct")
+  subject      String
+  body         String      @db.Text
+  workflowId   String?
+  read         Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+
+  @@index([recipientId])
+  @@index([departmentId])
+  @@index([senderId])
+  @@index([audience])
+  @@index([office])
+}

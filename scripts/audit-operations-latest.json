@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-06-21T05:45:45.116Z",
+  "summary": {
+    "totalClients": 2,
+    "unverifiedClients": 1,
+    "totalWorkflows": 0,
+    "activeWorkflows": 0,
+    "stuckWorkflows": 0,
+    "employees": 0,
+    "departments": 0,
+    "byStatus": {}
+  },
+  "clients": [
+    {
+      "name": "John  Njuguna",
+      "email": "kinyanjuiwilson10@gmail.com",
+      "company": "Research ",
+      "verified": false,
+      "workflows": 0,
+      "submissions": 0,
+      "joined": "2026-06-20"
+    },
+    {
+      "name": "John Client",
+      "email": "client@example.com",
+      "company": "Acme Corp",
+      "verified": true,
+      "workflows": 0,
+      "submissions": 0,
+      "joined": "2026-06-20"
+    }
+  ],
+  "innovators": [
+    {
+      "name": "Jane Innovator",
+      "email": "innovator@example.com",
+      "verified": true
+    },
+    {
+      "name": "Wilson Kinyanjui",
+      "email": "fernangomez1961@gmail.com",
+      "verified": true
+    }
+  ],
+  "activeWorkflows": [],
+  "stuckWorkflows": [],
+  "employees": [],
+  "departments": []
+}

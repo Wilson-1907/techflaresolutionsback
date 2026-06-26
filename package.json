@@ -1,0 +1,47 @@
+{
+  "name": "techflare-unified-backend",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev -p 4000",
+    "build": "prisma generate && next build",
+    "start": "sh scripts/start-production.sh",
+    "lint": "eslint",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:push": "tsx --env-file=.env scripts/run-prisma.ts db push",
+    "db:migrate": "tsx --env-file=.env scripts/run-prisma.ts migrate deploy",
+    "db:seed": "tsx --env-file=.env scripts/run-prisma.ts db seed",
+    "audit": "tsx --env-file=.env scripts/audit-operations.ts"
+  },
+  "prisma": {
+    "seed": "tsx --env-file=.env prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "bcryptjs": "^3.0.2",
+    "google-auth-library": "^9.15.1",
+    "jose": "^6.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "next": "16.2.9",
+    "nodemailer": "^6.10.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "zod": "^3.25.56",
+    "prisma": "^6.9.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tsx": "^4.19.4",
+    "typescript": "^5"
+  }
+}
